@@ -1,0 +1,7 @@
+Title: Help Board
+            /select (/sel) <file name> <message>    - opens <file_name> and writes <message> in file
+            /new           <file name>              - creates file of <file>
+            /files  (/dir)                          - lists all files in directory
+            /delete (/del) <file name>              - deletes file from directory
+            /quit                                   - quits document or terminal
+            /clear                                  - clears terminal (not document)

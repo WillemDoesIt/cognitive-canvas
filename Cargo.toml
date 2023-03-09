@@ -1,0 +1,18 @@
+[package]
+name = "rust-message"
+version = "0.1.0"
+edition = "2021"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lclearang.org/cargo/reference/manifest.html
+
+[dependencies]
+figlet-rs = "0.1.4"
+chrono = "0.4"
+ring = "0.16.20"
+sha2 = "0.9.5"
+rand = "0.8.4"
+aes="0.7.5"
+hex="0.4.3"
+block-modes="0.8.1"
+hex-literal="0.3.3"
