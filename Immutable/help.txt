@@ -5,3 +5,4 @@ Title: Help Board
             /delete (/del) <file name>              - deletes file from directory
             /quit                                   - quits document or terminal
             /clear                                  - clears terminal (not document)
+            /newpassword (/pass)                    - generates new master-pass / create new password

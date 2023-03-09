@@ -1,5 +1,6 @@
 use crate::figlet::fig_header;
 use crate::myio::myinput;
+use crate::password::{generate_master_password, update_password_file};
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
@@ -232,6 +233,21 @@ pub fn run(input: Vec<&str>) {
         println!("Deleted file.\n");
     }
 
+    fn new_password(_attributes: Vec<&str>) {
+        //TODO: do you want to generate new master password?
+        let gen = myinput("Do you want to generate new master password? (y/n)\n");
+        if gen == "y" {
+            println!("...\npassword saved successfully.");
+            println!("Here is your Master password {}\n", generate_master_password());
+            return;
+        }
+        //TODO: what will your new password be
+        let new_pass = myinput("What will your new password be?\n");
+        update_password_file(&new_pass, false)
+            .expect("Error updating password file");
+        println!("...\npassword saved successfully.\n");
+    }   
+
     fn clear (_attributes: Vec<&str>) {
         print!("{}[2J", 27 as char);
         print!("{}[H", 27 as char);
@@ -262,6 +278,9 @@ pub fn run(input: Vec<&str>) {
         h.insert(String::from("/clear"), clear);
         h.insert(String::from("/help"), help);
         h.insert(String::from("/new"), new);
+
+        h.insert(String::from("/newpassword"), new_password);
+        h.insert(String::from("/pass"), new_password);
 
         h // returns h
     };
