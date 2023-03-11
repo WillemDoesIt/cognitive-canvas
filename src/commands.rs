@@ -4,10 +4,24 @@ use crate::password::{generate_master_password, update_password_file};
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
-use std::path::Path;
 use std::io::Write;
 
-fn get_file_path(given_attributes: &Vec<&str>, command_name:&str) -> String {
+use std::env;
+use std::path::{Path, PathBuf};
+
+pub fn get_path(path: impl AsRef<Path>) -> PathBuf {
+    let exe_path = env::current_exe().expect("Failed to get current executable path");
+    let exe_dir = exe_path.parent().expect("Failed to get executable directory");
+
+       let project_dir = exe_dir.to_path_buf();
+//add mut ^ there
+//  project_dir.pop(); // remove the `debug` or `release` directory
+//  project_dir.pop(); // remove the `target` directory
+
+    project_dir.join(path)
+}
+
+fn get_path_from_attributes(given_attributes: &Vec<&str>, command_name:&str) -> PathBuf {
     // if attributes is empty
     let file_path;
     if given_attributes[0] == "" {
@@ -17,48 +31,20 @@ fn get_file_path(given_attributes: &Vec<&str>, command_name:&str) -> String {
         println!("\x1b[2K\x1b[2A\x1b[2K\x1b[2A");
         println!("{command_name} {input}\n");
 
-        file_path = format!("{}\\{}", "documents", input);
+        file_path = get_path(format!("{}/{}", "documents", input));
     }else {
         // get <file name> from attributes
         println!("");
-        file_path = format!("{}\\{}", "documents", given_attributes[0].to_string());  
+        file_path = get_path(format!("{}/{}", "documents", given_attributes[0].to_string()));  
     };
 
- /* 
-    fn is_valid_file_path(file_path: &str) -> bool {
-        match fs::metadata(file_path) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
-    }
-    if is_valid_file_path(&file_path) {
-        return file_path;
-    }else {
-        return "Doesn't exist".to_owned();
-    }
-*/
     return file_path.to_owned();
-/*
-    match file_path {s
-        Ok(path) => println!("The file path is: {}", path),
-        Err(e) => println!("An error occurred: {}", e),
-    }
-*/
 }
 
 pub fn run(input: Vec<&str>) { 
 
     fn select (attributes : Vec<&str>) {
-        let file_path = get_file_path(&attributes, "/select");
-
-/*
-        match file_path {
-            Ok(path) => println!("The file path is: {}", path),
-            Err(e) => return;
-        }
-*/
-
-//      println!("{file_path}");
+        let file_path = get_path_from_attributes(&attributes, "/select");
             
         println!("Opening document...");
         let contents = fs::read_to_string(&*file_path)
@@ -142,7 +128,7 @@ pub fn run(input: Vec<&str>) {
         // print help.txt to terminal
 
         println!("Opening document...");
-        let contents = fs::read_to_string(r"Immutable\help.txt")
+        let contents = fs::read_to_string(get_path("Immutable/help.txt"))
             .expect("Error reading file");
         println!("Document opened.");
 
@@ -168,7 +154,7 @@ pub fn run(input: Vec<&str>) {
     }
 
     fn new (attributes : Vec<&str>) {
-        let file_path = get_file_path(&attributes, "/new");
+        let file_path = get_path_from_attributes(&attributes, "/new");
 
         // create a new file of name <file name> in document directory
         println!("Creating file...");
@@ -187,8 +173,13 @@ pub fn run(input: Vec<&str>) {
         file.write_all(title.as_bytes())
            .expect("Error writing title to file");
         
-        let file_path = file_path.rsplit("\\").next().unwrap();
-        select(file_path
+        let file_name = file_path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+
+        select(file_name
            .split(" ")
            .collect()
         );
@@ -220,7 +211,7 @@ pub fn run(input: Vec<&str>) {
     }
 
     fn delete (attributes: Vec<&str>) {
-        let file_path = get_file_path(&attributes, "/delete");
+        let file_path = get_path_from_attributes(&attributes, "/delete");
 
         println!("Deleting...");
         if !Path::new(&file_path).exists() {
@@ -290,6 +281,6 @@ pub fn run(input: Vec<&str>) {
     }else if commands.contains_key(&format!("/{}", command)) {
         commands[&format!("/{}", command)](attributes);
     }else {
-        println!("\ninvalid command, use '/help' to list commands.\n")
+        println!("\ninvalid command, use `/help` to list commands.\n")
     }
 }

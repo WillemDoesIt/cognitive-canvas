@@ -10,13 +10,18 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-pub fn encrypt_files(file_path: &str, key: &str) -> std::io::Result<()> {
+use crate::commands::get_path;
+
+pub fn encrypt_files(path_str: &str, key: &str) -> std::io::Result<()> {
     let iv = hex!("");
 
     let key_bytes = hex::decode(key).expect("Failed to decode key");
 
+    let path_buf = PathBuf::from(path_str);
+    let file_path = get_path(path_buf);
+
     // Get all .txt files within the specified directory
-    let path = Path::new(file_path);
+    let path = Path::new(&file_path);
     let txt_files: Vec<PathBuf> = fs::read_dir(path)?
         .filter_map(|entry| {
             let path = entry.unwrap().path();
@@ -48,13 +53,16 @@ pub fn encrypt_files(file_path: &str, key: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn decrypt_files(file_path: &str, key: &str) -> std::io::Result<()> {
+pub fn decrypt_files(path_str: &str, key: &str) -> std::io::Result<()> {
     let iv = hex!("");
 
     let key_bytes = hex::decode(key).expect("Failed to decode key");
 
+    let path_buf = PathBuf::from(path_str);
+    let file_path = get_path(path_buf);
+
     // Get all .txt files within the specified directory
-    let path = Path::new(file_path);
+    let path = Path::new(&file_path);
     let txt_files: Vec<PathBuf> = fs::read_dir(path)?
         .filter_map(|entry| {
             let path = entry.unwrap().path();
