@@ -10,7 +10,37 @@ use crate::myio::myinput;
 use crate::commands::get_path;
 use std::fs;
 
+use std::process::Command;
+
+fn set_conpty(enabled: bool) {
+    let script = if enabled {
+        r#"
+            reg add HKCU\Console /v VirtualTerminalLevel /t REG_DWORD /d 1 /f
+        "#
+    } else {
+        r#"
+            Remove-ItemProperty -Path HKCU:\Console -Name VirtualTerminalLevel -ErrorAction SilentlyContinue
+        "#
+    };
+    
+    let action = if enabled { "enabled" } else { "disabled" };
+    let output = Command::new("powershell")
+                     .arg("-Command")
+                     .arg(script)
+                     .output()
+                     .expect("failed to execute powershell script");
+
+    if output.status.success() {
+        println!("conpty feature {} successfully", action);
+    } else {
+        println!("failed to {} conpty feature: {}", action, output.status);
+    }
+}
+
 fn main () {
+    // Enable conpty feature
+    // this is necessary to let lines be removed with println!
+    set_conpty(true);
 
     let password_file_path = get_path("Immutable/Shapassword.txt");
 
@@ -49,4 +79,7 @@ fn main () {
         Ok(_) => println!("Encrypted files successfully."),
         Err(err) => println!("error: {}", err)
     }
+
+    // Disable conpty feature
+    set_conpty(false);
 }
