@@ -13,10 +13,16 @@ pub fn get_path(path: impl AsRef<Path>) -> PathBuf {
     let exe_path = env::current_exe().expect("Failed to get current executable path");
     let exe_dir = exe_path.parent().expect("Failed to get executable directory");
 
-       let project_dir = exe_dir.to_path_buf();
-//add mut ^ there
-//  project_dir.pop(); // remove the `debug` or `release` directory
-//  project_dir.pop(); // remove the `target` directory
+    let project_dir = {
+        if exe_dir.to_string_lossy().contains(r"target\debug") {
+            let mut project_dir = exe_dir.to_path_buf();
+            project_dir.pop(); // remove the `debug` directory
+            project_dir.pop(); // remove the `target` directory
+            project_dir
+        }else {
+            exe_dir.to_path_buf()
+        }
+    };
 
     project_dir.join(path)
 }
