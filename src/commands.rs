@@ -9,6 +9,35 @@ use std::io::Write;
 use std::env;
 use std::path::{Path, PathBuf};
 
+/// Returns a path to a file or directory relative to the project directory.
+///
+/// The function takes an argument `path` which is a reference to a path, and returns a `PathBuf` representing the same path but relative to the project directory. The project directory is determined by looking at the directory containing the current executable, and if that directory contains `target\debug`, then the project directory is two levels above it. Otherwise, the project directory is the same as the directory containing the current executable.
+///
+/// # Arguments
+///
+/// * `path` - An object that can be converted to a `Path` reference using the `AsRef` trait.
+///
+/// # Returns
+///
+/// A `PathBuf` representing the given `path` relative to the project directory.
+///
+/// # Panics
+///
+/// The function panics if it fails to get the current executable path or the executable directory.
+///
+/// # Example
+///
+/// ```
+/// use std::path::Path;
+/// use crate::get_path;
+///
+/// let data_dir = get_path(Path::new("data"));
+/// println!("The path to the data directory is {:?}", data_dir);
+/// ```
+/// 
+/// # Remarks
+/// 
+/// This will be able to tell if the exe is in the main directory or in the /debug/target directory so the exe can be run regardless of location
 pub fn get_path(path: impl AsRef<Path>) -> PathBuf {
     let exe_path = env::current_exe().expect("Failed to get current executable path");
     let exe_dir = exe_path.parent().expect("Failed to get executable directory");
@@ -27,6 +56,30 @@ pub fn get_path(path: impl AsRef<Path>) -> PathBuf {
     project_dir.join(path)
 }
 
+/// Gets the file path from the given command attributes or prompts the user for it.
+///
+/// The function takes a reference to a vector of string slices called `given_attributes` and a string `command_name`, and returns a `PathBuf` representing the file path. If the first element of `given_attributes` is an empty string, the function prompts the user for the intended file name. Otherwise, it uses the first element of `given_attributes` as the file name to construct the file path.
+///
+/// # Arguments
+///
+/// * `given_attributes` - A reference to a vector of string slices containing the command attributes.
+/// * `command_name` - A string representing the name of the command being executed.
+///
+/// # Returns
+///
+/// A `PathBuf` representing the file path.
+///
+/// # Example
+///
+/// ```
+/// use std::path::PathBuf;
+/// use crate::get_path_from_attributes;
+///
+/// let attributes = vec!["filename.txt"];
+/// let command_name = "open";
+/// let file_path = get_path_from_attributes(&attributes, command_name);
+/// println!("The file path is {:?}", file_path);
+/// ```
 fn get_path_from_attributes(given_attributes: &Vec<&str>, command_name:&str) -> PathBuf {
     // if attributes is empty
     let file_path;
@@ -49,6 +102,26 @@ fn get_path_from_attributes(given_attributes: &Vec<&str>, command_name:&str) -> 
 
 pub fn run(input: Vec<&str>) { 
 
+    /// This function selects a file and allows the user to write to it.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `attributes` - A vector of strings containing the attributes of the file to select.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// let attributes = vec!["MyFile.txt"];
+    /// select(attributes);
+    /// ```
+    /// 
+    /// # Remarks
+    /// 
+    /// The function prints the title of the selected file, then reads the contents of it and prints them in the terminal. 
+    /// The user can then write messages to the file, which the function adds to it's contents. 
+    /// 
+    /// The user can quit the file selection by typing "/quit" twice. The first time will write the quit message to the file,
+    /// the second time will exit the selection.
     fn select (attributes : Vec<&str>) {
         let file_path = get_path_from_attributes(&attributes, "/select");
             
@@ -130,6 +203,36 @@ pub fn run(input: Vec<&str>) {
         }
     }
 
+    /// This function prints help.txt to the terminal.
+    ///
+    /// # Parameters
+    ///
+    /// - `attributes`: A `Vec` of `&str` representing the attributes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// help();
+    /// ```
+    /// prints:
+    /// ```
+    ///Opening document...
+    ///Document opened.
+    ///_   _          _             ____                               _
+    ///| | | |   ___  | |  _ __     | __ )    ___     __ _   _ __    __| |
+    ///| |_| |  / _ \ | | | '_ \    |  _ \   / _ \   / _` | | '__|  / _` |
+    ///|  _  | |  __/ | | | |_) |   | |_) | | (_) | | (_| | | |    | (_| |
+    ///|_| |_|  \___| |_| | .__/    |____/   \___/   \__,_| |_|     \__,_|
+    ///                |_|
+    ///    
+    ///        /select (/sel) <file name> <message>    - opens <file_name> and writes <message> in file
+    ///        /new           <file name>              - creates file of <file>
+    ///        /files  (/dir)                          - lists all files in directory
+    ///        /delete (/del) <file name>              - deletes file from directory
+    ///        /quit                                   - quits document or terminal
+    ///        /clear                                  - clears terminal (not document)
+    ///        /newpassword (/pass)                    - generates new master-pass / create new password
+    /// ```
     fn help(_attributes : Vec<&str>) {
         // print help.txt to terminal
 
@@ -159,6 +262,20 @@ pub fn run(input: Vec<&str>) {
 
     }
 
+    /// Creates a new file with a given name in the document directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `attributes` - A vector of strings with the name of the file to be created.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let file_name = vec!["my_file.txt"];
+    /// new(file_name);
+    /// ```
+    /// 
+    /// Will create a new file called "my_file.txt" in the document directory.
     fn new (attributes : Vec<&str>) {
         let file_path = get_path_from_attributes(&attributes, "/new");
 
@@ -191,8 +308,31 @@ pub fn run(input: Vec<&str>) {
         );
     }
 
+    /// `files` is a function that prints the names of all files in the "documents" directory.
+    /// 
+    /// # Parameters
+    /// 
+    /// `attributes` - a `Vec` of `&str` containing the attributes of the files to be printed.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// // given the file conatins document.txt and main.txt
+    /// files();
+    /// ```
+    /// prints:
+    /// ``` 
+    ///     ____    _                        _
+    ///    |  _ \  (_)  _ __    ___    ___  | |_    ___    _ __   _   _ 
+    ///    | | | | | | | '__|  / _ \  / __| | __|  / _ \  | '__| | | | |
+    ///    | |_| | | | | |    |  __/ | (__  | |_  | (_) | | |    | |_| |
+    ///    |____/  |_| |_|     \___|  \___|  \__|  \___/  |_|     \__, |
+    ///                                                            |___/ 
+    ///
+    ///                document.txt
+    ///                main.txt
+    /// ```
     fn files (_attributes : Vec<&str>) {
-
         // print all files in the documents directory
         let dir = "documents";
 
@@ -216,6 +356,26 @@ pub fn run(input: Vec<&str>) {
         println!("");
     }
 
+    /// Deletes a file from a given path.
+    ///
+    /// # Parameters
+    ///
+    /// * `attributes` - A vector of strings representing the path of the file to delete.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let attributes = vec!["folder_name", "file.txt"];
+    /// delete(attributes);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the file path doesn't exist.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file couldn't be removed.
     fn delete (attributes: Vec<&str>) {
         let file_path = get_path_from_attributes(&attributes, "/delete");
 
@@ -230,21 +390,36 @@ pub fn run(input: Vec<&str>) {
         println!("Deleted file.\n");
     }
 
+    /// Prompts the user for a new password and updates the password file.
+    ///
+    /// If the user chooses to generate a new master password, the master password file is
+    /// updated and the new master password is printed to the console. Otherwise,
+    /// the user is prompted for a new password, and the password file is updated with
+    /// the new password.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let attributes: Vec<&str> = vec![];
+    /// new_password(attributes);
+    /// ```
     fn new_password(_attributes: Vec<&str>) {
-        //TODO: do you want to generate new master password?
         let gen = myinput("Do you want to generate new master password? (y/n)\n");
         if gen == "y" {
             println!("...\npassword saved successfully.");
             println!("Here is your Master password {}\n", generate_master_password());
             return;
         }
-        //TODO: what will your new password be
         let new_pass = myinput("What will your new password be?\n");
         update_password_file(&new_pass, false)
             .expect("Error updating password file");
         println!("...\npassword saved successfully.\n");
     }   
 
+    /// Clears the terminal screen.
+    ///
+    /// This function clears the terminal screen by sending ANSI escape codes to the
+    /// console.
     fn clear (_attributes: Vec<&str>) {
         print!("{}[2J", 27 as char);
         print!("{}[H", 27 as char);

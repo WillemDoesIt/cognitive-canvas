@@ -10,62 +10,98 @@ use crate::myio::myinput;
 use crate::commands::get_path;
 use std::fs;
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
+use std::process::Command;
 
-use ctrlc;
+/// Enables or disables the ConPTY feature on Windows systems using the Windows Registry or PowerShell.
+///
+/// # Arguments
+///
+/// * `enabled` - A boolean value indicating whether the ConPTY feature should be enabled (`true`) or disabled (`false`).
+///
+/// * `print_status` - A boolean value indicating whether to print the status of the ConPTY feature after attempting to enable or disable it. If `false`, the function returns immediately without printing anything.
+///
+/// # Example
+///
+/// ```
+/// set_conpty(true, true);
+/// ```
+///
+/// # Notes
+///
+/// This function sets the `VirtualTerminalLevel` registry key to `1` to enable the ConPTY feature, and removes the `VirtualTerminalLevel` key to disable the feature. It uses PowerShell to execute the appropriate script, and prints a message indicating whether the operation was successful or not.
+///
+/// # Errors
+///
+/// If the PowerShell script fails to execute for any reason, an error message will be printed to the console.
+fn set_conpty(enabled: bool, print_status: bool) {
+    let script = if enabled {
+        r#"
+            reg add HKCU\Console /v VirtualTerminalLevel /t REG_DWORD /d 1 /f
+        "#
+    } else {
+        r#"
+            Remove-ItemProperty -Path HKCU:\Console -Name VirtualTerminalLevel -ErrorAction SilentlyContinue
+        "#
+    };
+    
+    if !print_status {return}
+    let action = if enabled { "enabled" } else { "disabled" };
+    let output = Command::new("powershell")
+                     .arg("-Command")
+                     .arg(script)
+                     .output()
+                     .expect("failed to execute powershell script");
 
-fn main() {
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
+    if output.status.success() {
+        println!("conpty feature {} successfully", action);
+    } else {
+        println!("failed to {} conpty feature: {}", action, output.status);
+    }
+}
 
-    ctrlc::set_handler(move || {
-        r.store(false, Ordering::SeqCst);
-    }).expect("Error setting Ctrl-C handler");
+fn main () {
+    // Enable conpty feature
+    // this is necessary to let lines be removed with println!
+    set_conpty(true,false);
 
+    let password_file_path = get_path("Immutable/Shapassword.txt");
 
-    let key = new_key("my password"); // need this outside of the loop scope because its used after to encrypt again
-    while running.load(Ordering::SeqCst) {
-        // Your program's main loop here...
-        let password_file_path = get_path("Immutable/Shapassword.txt");
+    println!("{}", password_file_path.display());
 
-        let user_inputed_password = myinput("Enter password:\n");
+    let user_inputed_password = myinput("Enter password:\n");
 
-        let metadata = fs::metadata(password_file_path).expect("Failed to get file metadata");
-        let is_empty = metadata.len() == 0;
+    let metadata = fs::metadata(password_file_path).expect("Failed to get file metadata");
+    let is_empty = metadata.len() == 0;
 
-        if is_empty {
-            update_password_file(user_inputed_password.as_str(), false)
-                .unwrap_or_else(|e| eprintln!("Error updating password: {}", e));
-            println!("...\npassword saved successfully.");
-            println!("Here is your Master password {}", generate_master_password());
-        }else {
-            let pass:bool = check_password(user_inputed_password.as_str());
-            match pass {
-                true => println!("\x1B[2A\x1B[0GCorrect password."),
-                false => {
-                    println!("Wrong password.");
-                    return;
-                },
-            }
+    if is_empty {
+        update_password_file(user_inputed_password.as_str(), false)
+            .unwrap_or_else(|e| eprintln!("Error updating password: {}", e));
+        println!("...\npassword saved successfully.");
+        println!("Here is your Master password {}", generate_master_password());
+    }else {
+        let pass:bool = check_password(user_inputed_password.as_str());
+        match pass {
+            true => println!("\x1B[2A\x1B[0GCorrect password."),
+            false => {
+                println!("Wrong password.");
+                return;
+            },
         }
-
-        match decrypt_files("documents", &key.as_str()) {
-            Ok(_) => println!("Decrypt files successfully."),
-            Err(err) => println!("error: {}", err)
-        }
-
-        terminal::main();
-
-        thread::sleep(Duration::from_millis(100));
-        break;
     }
 
-    // Run your cleanup code here.
+    let key = new_key("my password");
+    match decrypt_files("documents", &key.as_str()) {
+        Ok(_) => println!("Decrypt files successfully."),
+        Err(err) => println!("error: {}", err)
+    }
+
+    terminal::main();
+
     match encrypt_files(get_path("documents").to_str().unwrap(), &key.as_str()){
         Ok(_) => println!("Encrypted files successfully."),
         Err(err) => println!("error: {}", err)
     }
+
+    // Disable conpty feature
+    set_conpty(false,false);
 }
