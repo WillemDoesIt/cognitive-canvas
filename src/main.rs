@@ -12,7 +12,28 @@ use std::fs;
 
 use std::process::Command;
 
-fn set_conpty(enabled: bool) {
+/// Enables or disables the ConPTY feature on Windows systems using the Windows Registry or PowerShell.
+///
+/// # Arguments
+///
+/// * `enabled` - A boolean value indicating whether the ConPTY feature should be enabled (`true`) or disabled (`false`).
+///
+/// * `print_status` - A boolean value indicating whether to print the status of the ConPTY feature after attempting to enable or disable it. If `false`, the function returns immediately without printing anything.
+///
+/// # Example
+///
+/// ```
+/// set_conpty(true, true);
+/// ```
+///
+/// # Notes
+///
+/// This function sets the `VirtualTerminalLevel` registry key to `1` to enable the ConPTY feature, and removes the `VirtualTerminalLevel` key to disable the feature. It uses PowerShell to execute the appropriate script, and prints a message indicating whether the operation was successful or not.
+///
+/// # Errors
+///
+/// If the PowerShell script fails to execute for any reason, an error message will be printed to the console.
+fn set_conpty(enabled: bool, print_status: bool) {
     let script = if enabled {
         r#"
             reg add HKCU\Console /v VirtualTerminalLevel /t REG_DWORD /d 1 /f
@@ -23,6 +44,7 @@ fn set_conpty(enabled: bool) {
         "#
     };
     
+    if !print_status {return}
     let action = if enabled { "enabled" } else { "disabled" };
     let output = Command::new("powershell")
                      .arg("-Command")
@@ -40,7 +62,7 @@ fn set_conpty(enabled: bool) {
 fn main () {
     // Enable conpty feature
     // this is necessary to let lines be removed with println!
-    set_conpty(true);
+    set_conpty(true,false);
 
     let password_file_path = get_path("Immutable/Shapassword.txt");
 
@@ -81,5 +103,5 @@ fn main () {
     }
 
     // Disable conpty feature
-    set_conpty(false);
+    set_conpty(false,false);
 }
