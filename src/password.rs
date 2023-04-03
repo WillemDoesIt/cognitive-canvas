@@ -5,6 +5,22 @@ use sha2::{Sha256, Digest};
 use rand::Rng;
 use crate::commands::get_path;
 
+pub fn get_hash(input_str: &str) -> String {
+    // Create a Sha256 object
+    let mut hasher = Sha256::new();
+
+    // Hash the input string
+    hasher.update(input_str.as_bytes());
+
+    // Get the hash result as a byte array and return it
+    let hashed_bytes = hasher.finalize();
+
+    let hash = format!("{:x}", hashed_bytes);
+    hash
+}
+
+
+
 /// Updates the SHA256 password file with the provided `password`.
 /// 
 /// # Arguments
@@ -26,9 +42,10 @@ use crate::commands::get_path;
 /// assert!(result.is_ok());
 /// ```
 pub fn update_password_file(password: &str, is_master: bool) -> Result<(), std::io::Error> {
-    let mut hasher = Sha256::new();
-    hasher.update(password.as_bytes());
-    let hashed_bytes = hasher.finalize();
+//  let mut hasher = Sha256::new();
+//  hasher.update(password.as_bytes());
+//  let hashed_bytes = hasher.finalize();
+//  println!("The type of my_var is: {}", std::any::type_name::<typeof(hashed_bytes)>());
     let mut file = {
         if is_master {
             File::create(get_path("Immutable/SHAmasterpassword.txt"))?
@@ -36,7 +53,8 @@ pub fn update_password_file(password: &str, is_master: bool) -> Result<(), std::
             File::create(get_path("Immutable/SHApassword.txt"))?
         }
     };
-    file.write_all(format!("{:x}", hashed_bytes).as_bytes())?;
+//  file.write_all(format!("{:x}", hashed_bytes).as_bytes())?;
+    file.write_all(get_hash(password).as_bytes())?;
     Ok(())
 }
 
