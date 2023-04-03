@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 /// assert_eq!(new_list, ["this".to_owned()]);
 /// ```
 fn get_contents() -> Vec<String> {
-    let file_name = get_path("C:mutable/d1b2a59fbea7e20077af9f91b27e95e865061b270be03ff539ab3b73587882e8.txt");
+    let file_name = get_path("mutable/d1b2a59fbea7e20077af9f91b27e95e865061b270be03ff539ab3b73587882e8.txt");
     let file = File::open(file_name).unwrap();
     let reader = BufReader::new(file);
 
