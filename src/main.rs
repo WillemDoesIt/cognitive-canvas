@@ -66,8 +66,6 @@ fn main () {
 
     let password_file_path = get_path("Immutable/Shapassword.txt");
 
-    println!("{}", password_file_path.display());
-
     let user_inputed_password = myinput("Enter password:\n");
 
     let metadata = fs::metadata(password_file_path).expect("Failed to get file metadata");
@@ -90,14 +88,14 @@ fn main () {
     }
 
     let key = new_key("my password");
-    match decrypt_files("documents", &key.as_str()) {
+    match decrypt_files("mutable", &key.as_str()) {
         Ok(_) => println!("Decrypt files successfully."),
         Err(err) => println!("error: {}", err)
     }
 
     terminal::main();
 
-    match encrypt_files(get_path("documents").to_str().unwrap(), &key.as_str()){
+    match encrypt_files(get_path("mutable").to_str().unwrap(), &key.as_str()){
         Ok(_) => println!("Encrypted files successfully."),
         Err(err) => println!("error: {}", err)
     }

@@ -1,13 +1,93 @@
 use crate::figlet::fig_header;
 use crate::myio::myinput;
-use crate::password::{generate_master_password, update_password_file};
+use crate::password::{generate_master_password, update_password_file, get_hash};
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufRead, BufReader, BufWriter, Write};
 
 use std::env;
 use std::path::{Path, PathBuf};
+
+/// Reads the names of the unhashed files from the mutable directory, the names
+/// are stored in contents.txt which are encrypted when program is not in use.
+///
+/// The file path to contents.txt is obtained using the `get_path` function, 
+/// which returns the path of the file relative to the project root directory.
+///
+/// # Panics
+///
+/// This function will panic if the file cannot be opened or read.
+///
+/// # Examples
+///
+/// ```
+/// // list is empty
+/// let mut new_list = get_contents();
+///
+/// new_list.push("this".to_owned());
+///
+/// assert_eq!(new_list, ["this".to_owned()]);
+/// ```
+fn get_contents() -> Vec<String> {
+    let file_name = get_path("C:mutable/d1b2a59fbea7e20077af9f91b27e95e865061b270be03ff539ab3b73587882e8.txt");
+    let file = File::open(file_name).unwrap();
+    let reader = BufReader::new(file);
+
+    let mut list = Vec::new();
+
+    for line in reader.lines() {
+        let item = line.unwrap();
+        list.push(item);
+    }
+
+    list
+}
+
+
+/// lets you update the list of the names of the files in the mutable directory
+///
+/// The file path is obtained using the `get_path` function, which returns the
+/// path of the file relative to the project root directory.
+///
+/// # Panics
+///
+/// This function will panic if the file cannot be opened or read.
+/// 
+/// # Arguments
+/// 
+/// * `list` - &Vec<String> to set contents.txt to.
+///
+/// # Examples
+///
+/// ```
+/// let list = vec!["apple"]
+///     .iter()
+///     .map(|&s| s.to_string())
+///     .collect();
+/// 
+/// set_contents(&list);
+/// assert_eq!(list, get_contents());
+///
+/// // you can add to the list and update it too: 
+/// new_list.push("this".to_owned());
+///
+/// set_contents(&new_list);
+/// assert_eq!(new_list, get_contents());
+///
+/// ```
+fn set_contents(list: &Vec<String>) {
+    let file_name = get_path("mutable/d1b2a59fbea7e20077af9f91b27e95e865061b270be03ff539ab3b73587882e8.txt");
+    let file = File::create(file_name).unwrap();
+
+    file.set_len(0).unwrap(); // truncate the file to zero bytes
+    let mut writer = BufWriter::new(file);
+
+    for item in list {
+        writer.write_all(item.as_bytes()).unwrap();
+        writer.write_all(b"\n").unwrap();
+    }
+}
 
 /// Returns a path to a file or directory relative to the project directory.
 ///
@@ -81,6 +161,9 @@ pub fn get_path(path: impl AsRef<Path>) -> PathBuf {
 /// println!("The file path is {:?}", file_path);
 /// ```
 fn get_path_from_attributes(given_attributes: &Vec<&str>, command_name:&str) -> PathBuf {
+    // read the contents.json
+
+
     // if attributes is empty
     let file_path;
     if given_attributes[0] == "" {
@@ -90,11 +173,12 @@ fn get_path_from_attributes(given_attributes: &Vec<&str>, command_name:&str) -> 
         println!("\x1b[2K\x1b[2A\x1b[2K\x1b[2A");
         println!("{command_name} {input}\n");
 
-        file_path = get_path(format!("{}/{}", "documents", input));
+        file_path = get_path(format!("{}/{}", "mutable", input));
     }else {
         // get <file name> from attributes
         println!("");
-        file_path = get_path(format!("{}/{}", "documents", given_attributes[0].to_string()));  
+        let file_name = get_hash(given_attributes[0]);
+        file_path = get_path(format!("{}/{}.txt", "mutable", file_name)); 
     };
 
     return file_path.to_owned();
@@ -122,21 +206,27 @@ pub fn run(input: Vec<&str>) {
     /// 
     /// The user can quit the file selection by typing "/quit" twice. The first time will write the quit message to the file,
     /// the second time will exit the selection.
-    fn select (attributes : Vec<&str>) {
+    fn select (attributes : Vec<&str>) { 
+        if attributes[0] == "contents" {
+            println!("Cannot select contents file -> access directory from /files\n");
+            return;
+        }      
+
         let file_path = get_path_from_attributes(&attributes, "/select");
             
-        println!("Opening document...");
-        let contents = fs::read_to_string(&*file_path)
-            .expect("Error reading file");
+        println!("Opening document {}", format!(r#""{}""#, attributes[0]));
+        
+        let contents = match fs::read_to_string(&*file_path) {
+            Ok(contents) => contents,
+            Err(err) => {
+                println!("How stupid do you feel for typing to open a file that doesn't fucking exist, I mean really, the ignorance you have to your own directory that you have been building with this app is fucking hilarious\ntry it again and don't fuck it up.\nalr?\nalr.\nOh and for good measure, here is your error you fucking half-wit: {}\nwow, oH My gOd, what a shocker, couldn't find the fucking file\nyou're a joke.\n", err); 
+                return;
+            }
+        };
+        
         println!("Document opened.");
 
-        let title: String = contents
-            .lines()
-            .next()
-            .unwrap()
-            .chars()
-            .skip(7)
-            .collect();
+        let title: String = attributes[0].to_owned();
 
         let contents: String = contents
             .lines()
@@ -144,7 +234,7 @@ pub fn run(input: Vec<&str>) {
             .collect::<Vec<&str>>()
             .join("\n");
 
-        
+        clear(vec![]);
         fig_header(&title);
         println!(
            "{contents}\n"
@@ -168,10 +258,6 @@ pub fn run(input: Vec<&str>) {
             // quit if told
             if message == "/quit" {
                 println!("\nExiting document...");
-                // encrypt selected file
-                // thing
-                println!("Existed document.");
-                println!("write quit one more time to exit terminal\n");
                 break;
             }
 
@@ -201,6 +287,8 @@ pub fn run(input: Vec<&str>) {
                 temp_message = ""
             }
         }
+        println!("Existed document.");
+        println!("write quit one more time to exit terminal\n");
     }
 
     /// This function prints help.txt to the terminal.
@@ -285,30 +373,21 @@ pub fn run(input: Vec<&str>) {
             println!("File already exists.\n");
             return;
         }
-
-        let mut file = File::create(&*file_path)
+        let _file = File::create(&*file_path)
             .expect("Error creating file"); 
-        println!("File created.");
+        println!("File Created.\n");
 
-        let title:String = format!("Title: {} \n", myinput("What do you want the title to be?\n"));
-
-        // write the title to file
-        file.write_all(title.as_bytes())
-           .expect("Error writing title to file");
+        let title:String = attributes[0].to_owned();
         
-        let file_name = file_path
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+        // add title to contents.txt list
+        let mut list = get_contents();
+        list.push(title);
+        set_contents(&list);
 
-        select(file_name
-           .split(" ")
-           .collect()
-        );
+        select(vec![attributes[0]]);
     }
 
-    /// `files` is a function that prints the names of all files in the "documents" directory.
+    /// `files` is a function that prints the names of all files in the "mutable" directory.
     /// 
     /// # Parameters
     /// 
@@ -333,26 +412,14 @@ pub fn run(input: Vec<&str>) {
     ///                main.txt
     /// ```
     fn files (_attributes : Vec<&str>) {
-        // print all files in the documents directory
-        let dir = "documents";
-
-        // Get a list of all the files in the directory
-        println!("Reading files...");
-        let files = fs::read_dir(dir).unwrap();
-        println!("Files read.");
 
         fig_header("Directory");
 
-        // Iterate over the list of files and print their names
-        for file in files {
-            let file = file.unwrap();
-            let file_type = file.file_type().unwrap();
-            
-            if file_type.is_file() {
-                let file_name = file.file_name().into_string().unwrap();
-                println!("            {}", file_name);
-            }
+        let file_names = get_contents();
+        for file_name in file_names {
+            println!("{}", file_name);
         }
+
         println!("");
     }
 
@@ -377,6 +444,15 @@ pub fn run(input: Vec<&str>) {
     ///
     /// Returns an error if the file couldn't be removed.
     fn delete (attributes: Vec<&str>) {
+        if attributes[0] == "contents" {
+            println!("Delteing contents file will result in lost access to all of your files will remain unencrypted and only will be recoverable if you have a copy of the contents file and know how to replace it.");
+        }
+        let del = myinput("Are you sure you want to delete? (y/n)\n");
+        if !(del.to_lowercase() == "y") {
+            println!("deltion cancelled\n");
+            return;
+        }
+
         let file_path = get_path_from_attributes(&attributes, "/delete");
 
         println!("Deleting...");
@@ -388,6 +464,14 @@ pub fn run(input: Vec<&str>) {
         fs::remove_file(file_path)
             .expect("Couldn't remove file");
         println!("Deleted file.\n");
+
+        // remove from contents
+        let mut list = get_contents();
+        if let Some(index) = list.iter().position(|x| *x == attributes[0]) {
+            list.remove(index);
+        }
+        set_contents(&list);
+
     }
 
     /// Prompts the user for a new password and updates the password file.
